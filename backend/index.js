@@ -10,8 +10,16 @@ const Employee = require('./models/empSchema')
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the React frontend app
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
+const frontendPath = path.join(__dirname, "../frontend/dist");
+console.log("Checking frontend path:", frontendPath);
+const fs = require('fs');
+if (fs.existsSync(frontendPath)) {
+    console.log("Frontend dist folder found!");
+} else {
+    console.warn("WARNING: Frontend dist folder NOT found at:", frontendPath);
+}
+
+app.use(express.static(frontendPath));
 
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/empdetails_db';
 
