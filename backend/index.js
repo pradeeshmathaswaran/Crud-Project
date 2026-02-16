@@ -15,8 +15,16 @@ mongoose.connect(MONGODB_URI)
         console.log("mongodb connected")
     })
     .catch(err => {
-        console.log("db connection error", err)
+        console.error("db connection error", err)
     })
+
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: "ok",
+        db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+        env: process.env.NODE_ENV
+    });
+});
 
 
 app.post('/api/employee', async (req, res) => {
