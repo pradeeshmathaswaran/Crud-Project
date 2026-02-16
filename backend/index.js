@@ -16,22 +16,27 @@ if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/empdetails_db') {
     }
 }
 
+let lastDbError = null;
+
 mongoose.connect(MONGODB_URI)
     .then(() => {
         console.log("MongoDB connected successfully");
+        lastDbError = null;
     })
     .catch(err => {
         console.error("CRITICAL: MongoDB connection failed:", err.message);
+        lastDbError = err.message;
     });
 
 app.get('/api/health', (req, res) => {
     try {
         res.json({
             status: "ok",
-            db: mongoose.connection.readyState === 1 ? "connected" : "connecting/disconnected",
+            db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
             dbState: mongoose.connection.readyState,
+            error: lastDbError,
             env: process.env.NODE_ENV,
-            hasUri: !!MONGODB_URI
+            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0] : "none" // Safe check for URI mask
         });
     } catch (error) {
         res.status(500).json({ error: error.message });
