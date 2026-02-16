@@ -26,10 +26,11 @@ async function connectToDatabase() {
     }
 
     if (!connectionPromise) {
-        console.log("Starting new MongoDB connection...");
+        console.log("Connecting to MongoDB Atlas...");
         const options = {
-            serverSelectionTimeoutMS: 5000,
+            serverSelectionTimeoutMS: 10000,
             socketTimeoutMS: 45000,
+            family: 4 // Force IPv4 to avoid DNS issues in some serverless regions
         };
         connectionPromise = mongoose.connect(MONGODB_URI, options);
     }
@@ -37,36 +38,32 @@ async function connectToDatabase() {
     try {
         await connectionPromise;
         cachedDb = mongoose.connection;
-        console.log("MongoDB connected successfully");
+        console.log("Connected to database:", cachedDb.name);
         lastDbError = null;
         return cachedDb;
     } catch (err) {
-        console.error("CRITICAL: MongoDB connection failed:", err.message);
+        console.error("MongoDB connection failed:", err.message);
         lastDbError = err.message;
-        connectionPromise = null; // Reset promise to allow retry
+        connectionPromise = null;
         throw err;
     }
 }
 
-// Initial connection attempt
 connectToDatabase().catch(() => { });
 
 app.get('/api/health', async (req, res) => {
     try {
-        // Try to connect or check status
         const state = mongoose.connection.readyState;
-        let connectionStatus = "disconnected";
-
-        if (state === 1) connectionStatus = "connected";
-        else if (state === 2) connectionStatus = "connecting";
+        const states = ["disconnected", "connected", "connecting", "disconnecting"];
 
         res.json({
             status: "ok",
-            db: connectionStatus,
+            db: states[state] || "unknown",
             dbState: state,
+            dbName: mongoose.connection.name || "none",
             error: lastDbError,
             env: process.env.NODE_ENV,
-            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0] : "none"
+            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0].split(':')[0] + "://[user]:[pass]" : "none"
         });
     } catch (error) {
         res.status(500).json({ status: "error", error: error.message });
