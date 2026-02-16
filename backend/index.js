@@ -17,29 +17,59 @@ if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/empdetails_db') {
 }
 
 let lastDbError = null;
+let cachedDb = null;
+let connectionPromise = null;
 
-mongoose.connect(MONGODB_URI)
-    .then(() => {
+async function connectToDatabase() {
+    if (cachedDb && mongoose.connection.readyState === 1) {
+        return cachedDb;
+    }
+
+    if (!connectionPromise) {
+        console.log("Starting new MongoDB connection...");
+        const options = {
+            serverSelectionTimeoutMS: 5000,
+            socketTimeoutMS: 45000,
+        };
+        connectionPromise = mongoose.connect(MONGODB_URI, options);
+    }
+
+    try {
+        await connectionPromise;
+        cachedDb = mongoose.connection;
         console.log("MongoDB connected successfully");
         lastDbError = null;
-    })
-    .catch(err => {
+        return cachedDb;
+    } catch (err) {
         console.error("CRITICAL: MongoDB connection failed:", err.message);
         lastDbError = err.message;
-    });
+        connectionPromise = null; // Reset promise to allow retry
+        throw err;
+    }
+}
 
-app.get('/api/health', (req, res) => {
+// Initial connection attempt
+connectToDatabase().catch(() => { });
+
+app.get('/api/health', async (req, res) => {
     try {
+        // Try to connect or check status
+        const state = mongoose.connection.readyState;
+        let connectionStatus = "disconnected";
+
+        if (state === 1) connectionStatus = "connected";
+        else if (state === 2) connectionStatus = "connecting";
+
         res.json({
             status: "ok",
-            db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-            dbState: mongoose.connection.readyState,
+            db: connectionStatus,
+            dbState: state,
             error: lastDbError,
             env: process.env.NODE_ENV,
-            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0] : "none" // Safe check for URI mask
+            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0] : "none"
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ status: "error", error: error.message });
     }
 });
 
