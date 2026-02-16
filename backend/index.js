@@ -8,22 +8,40 @@ const Employee = require('./models/empSchema')
 
 app.use(cors(), express.json());
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/empdetails_db';
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/empdetails_db';
+
+if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/empdetails_db') {
+    if (process.env.NODE_ENV === 'production') {
+        console.warn("WARNING: Using local MongoDB URI in production!");
+    }
+}
 
 mongoose.connect(MONGODB_URI)
     .then(() => {
-        console.log("mongodb connected")
+        console.log("MongoDB connected successfully");
     })
     .catch(err => {
-        console.error("db connection error", err)
-    })
+        console.error("CRITICAL: MongoDB connection failed:", err.message);
+    });
 
 app.get('/api/health', (req, res) => {
-    res.json({
-        status: "ok",
-        db: mongoose.connection.readyState === 1 ? "connected" : "disconnected",
-        env: process.env.NODE_ENV
-    });
+    try {
+        res.json({
+            status: "ok",
+            db: mongoose.connection.readyState === 1 ? "connected" : "connecting/disconnected",
+            dbState: mongoose.connection.readyState,
+            env: process.env.NODE_ENV,
+            hasUri: !!MONGODB_URI
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error("Unhandled Error:", err);
+    res.status(500).json({ error: "Internal Server Error", details: err.message });
 });
 
 
