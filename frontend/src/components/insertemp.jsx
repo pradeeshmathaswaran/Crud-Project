@@ -15,7 +15,7 @@ export default function InsertEmp() {
   const handleSubmit = (e) => {
     e.preventDefault()
     axios
-      .post("http://localhost:5000/employee", data)
+      .post(`${import.meta.env.VITE_API_URL}/employee`, data)
       .then(() => {
         alert("Employee details inserted")
         setData({ name: "", email: "", mobile: "", department: "" })

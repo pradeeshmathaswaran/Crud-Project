@@ -9,7 +9,7 @@ export default function DisplayEmployee() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:5000/employee")
+      .get(`${import.meta.env.VITE_API_URL}/employee`)
       .then((res) => setData(res.data))
       .catch((err) => console.log("axios err", err));
   }, []);
@@ -18,7 +18,7 @@ export default function DisplayEmployee() {
     if (!window.confirm("Delete this employee?")) return;
 
     axios
-      .delete(`http://localhost:5000/employee/${id}`)
+      .delete(`${import.meta.env.VITE_API_URL}/employee/${id}`)
       .then(() => {
         setData(data.filter((item) => item._id !== id));
       })
