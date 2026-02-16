@@ -16,7 +16,7 @@ export default function UpdateEmployee() {
 
   useEffect(() => {
     axios
-      .get(`${import.meta.env.VITE_API_URL}/employee/${id}`)
+      .get(`/api/employee/${id}`)
       .then((res) => setData(res.data))
       .catch((err) => console.log("axios error", err))
   }, [id])
@@ -25,7 +25,7 @@ export default function UpdateEmployee() {
     e.preventDefault()
 
     axios
-      .put(`${import.meta.env.VITE_API_URL}/employee/${id}`, data)
+      .put(`/api/employee/${id}`, data)
       .then((res) => {
         alert("Employee updated successfully!")
         navigate("/")
