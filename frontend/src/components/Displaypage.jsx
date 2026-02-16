@@ -50,7 +50,7 @@ export default function DisplayEmployee() {
         </thead>
 
         <tbody>
-          {data.map((employee) => (
+          {Array.isArray(data) && data.map((employee) => (
             <tr key={employee._id}>
               <td>{employee.name}</td>
               <td>{employee.email}</td>
