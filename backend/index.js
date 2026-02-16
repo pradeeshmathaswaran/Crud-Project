@@ -17,53 +17,58 @@ if (!MONGODB_URI || MONGODB_URI === 'mongodb://localhost:27017/empdetails_db') {
 }
 
 let lastDbError = null;
-let cachedDb = null;
-let connectionPromise = null;
 
-async function connectToDatabase() {
-    if (cachedDb && mongoose.connection.readyState === 1) {
-        return cachedDb;
+async function connectToDatabase(retryCount = 0) {
+    if (mongoose.connection.readyState === 1) {
+        return mongoose.connection;
     }
 
-    if (!connectionPromise) {
-        console.log("Connecting to MongoDB Atlas...");
-        const options = {
-            serverSelectionTimeoutMS: 10000,
-            socketTimeoutMS: 45000,
-            family: 4 // Force IPv4 to avoid DNS issues in some serverless regions
-        };
-        connectionPromise = mongoose.connect(MONGODB_URI, options);
-    }
+    const clusterAddr = MONGODB_URI ? MONGODB_URI.split('@')[1]?.split('/')[0] : "unknown";
+    console.log(`Connecting to cluster: ${clusterAddr} (Attempt ${retryCount + 1})`);
 
     try {
-        await connectionPromise;
-        cachedDb = mongoose.connection;
-        console.log("Connected to database:", cachedDb.name);
+        const options = {
+            serverSelectionTimeoutMS: 15000,
+            socketTimeoutMS: 45000,
+            family: 4,
+            connectTimeoutMS: 15000
+        };
+
+        await mongoose.connect(MONGODB_URI, options);
+        console.log("MongoDB connected successfully!");
         lastDbError = null;
-        return cachedDb;
+        return mongoose.connection;
     } catch (err) {
-        console.error("MongoDB connection failed:", err.message);
+        console.error(`Connection attempt ${retryCount + 1} failed:`, err.message);
         lastDbError = err.message;
-        connectionPromise = null;
+
+        if (retryCount < 2) {
+            console.log("Retrying in 2 seconds...");
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            return connectToDatabase(retryCount + 1);
+        }
         throw err;
     }
 }
 
+// Initial connection attempt
 connectToDatabase().catch(() => { });
 
 app.get('/api/health', async (req, res) => {
     try {
         const state = mongoose.connection.readyState;
         const states = ["disconnected", "connected", "connecting", "disconnecting"];
+        const clusterAddr = MONGODB_URI ? MONGODB_URI.split('@')[1]?.split('/')[0] : "none";
 
         res.json({
             status: "ok",
             db: states[state] || "unknown",
             dbState: state,
             dbName: mongoose.connection.name || "none",
+            cluster: clusterAddr,
             error: lastDbError,
             env: process.env.NODE_ENV,
-            uriPrefix: MONGODB_URI ? MONGODB_URI.split('@')[0].split(':')[0] + "://[user]:[pass]" : "none"
+            uriPrefix: MONGODB_URI ? MONGODB_URI.substring(0, 25) + "..." : "none"
         });
     } catch (error) {
         res.status(500).json({ status: "error", error: error.message });
@@ -78,32 +83,55 @@ app.use((err, req, res, next) => {
 
 
 app.post('/api/employee', async (req, res) => {
-    const newEmp = new Employee(req.body);
-    const saved = await newEmp.save();
-    res.json(saved);
-
+    try {
+        await connectToDatabase();
+        const newEmp = new Employee(req.body);
+        const saved = await newEmp.save();
+        res.json(saved);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 })
 
 
 app.get('/api/employee', async (req, res) => {
-    const getEmp = await Employee.find();
-    res.json(getEmp);
-
+    try {
+        await connectToDatabase();
+        const getEmp = await Employee.find();
+        res.json(getEmp);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 })
 
 app.get('/api/employee/:id', async (req, res) => {
-    const empId = await Employee.findById(req.params.id);
-    res.json(empId)
+    try {
+        await connectToDatabase();
+        const empId = await Employee.findById(req.params.id);
+        res.json(empId)
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 })
 
 app.put('/api/employee/:id', async (req, res) => {
-    const updateEmp = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updateEmp);
+    try {
+        await connectToDatabase();
+        const updateEmp = await Employee.findByIdAndUpdate(req.params.id, req.body, { new: true });
+        res.json(updateEmp);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 })
 
 app.delete('/api/employee/:id', async (req, res) => {
-    await Employee.findByIdAndDelete(req.params.id)
-    res.json({ message: "deleted" })
+    try {
+        await connectToDatabase();
+        await Employee.findByIdAndDelete(req.params.id)
+        res.json({ message: "deleted" })
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 })
 
 const PORT = process.env.PORT || 5000;
@@ -114,4 +142,3 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 module.exports = app;
-
