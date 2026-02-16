@@ -1,8 +1,0 @@
-{
-  "name": "crud-project-monorepo",
-  "version": "1.0.0",
-  "scripts": {
-    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
-    "start": "cd backend && node index.js"
-  }
-}
