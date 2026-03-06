@@ -2,11 +2,15 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const mongoose = require("mongoose");
+const path = require("path");
 const app = express();
 
 const Employee = require('./models/empSchema')
 
 app.use(cors(), express.json());
+
+// Serve static files from the React frontend app
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/empdetails_db';
 
@@ -61,6 +65,13 @@ app.delete('/api/employee/:id', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
+
+// The "catchall" handler: for any request that doesn't
+// match one above, send back React's index.html file.
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+});
+
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
