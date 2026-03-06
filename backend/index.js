@@ -10,6 +10,8 @@ app.use(cors(), express.json());
 
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/empdetails_db';
 
+console.log("Connecting to MongoDB:", MONGODB_URI.split('@')[1] || "localhost (local)");
+
 mongoose.connect(MONGODB_URI)
     .then(() => console.log("MongoDB connected successfully"))
     .catch(err => console.error("MongoDB connection error:", err));
