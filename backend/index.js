@@ -8,7 +8,7 @@ const Employee = require('./models/empSchema')
 
 app.use(cors(), express.json());
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/empdetails_db';
+const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/empdetails_db';
 
 mongoose.connect(MONGODB_URI)
     .then(() => console.log("MongoDB connected successfully"))
