@@ -8,6 +8,12 @@ const Employee = require('./models/empSchema')
 
 app.use(cors(), express.json());
 
+app.get('/', (req, res) => {
+    const states = ['Disconnected', 'Connected', 'Connecting', 'Disconnecting'];
+    const state = states[mongoose.connection.readyState] || 'Unknown';
+    res.send(`Server is running! MongoDB State: ${state} (${mongoose.connection.readyState})`);
+});
+
 const MONGODB_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017/empdetails_db';
 
 console.log("Connecting to MongoDB:", MONGODB_URI.split('@')[1] || "localhost (local)");
